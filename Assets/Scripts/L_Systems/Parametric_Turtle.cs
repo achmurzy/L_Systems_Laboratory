@@ -23,13 +23,12 @@ public class Parametric_Turtle : MonoBehaviour
     private Stack<TransformHolder> branchStack;
     private Stack<Joint> jointStack;
     private List<GameObject> objList;
-    private List<VectorLine> lineList;
 
     private Vector3 initialPosition;
     private Quaternion saveOrientation;
 
 	public const int PRODUCTION_ONE = 1, PRODUCTION_TWO = 2, PRODUCTION_THREE = 3, PRODUCTION_FOUR = 4, PRODUCTION_FIVE = 5;
-	public const char DRAW = 'F', OBJECT = 'O', JOINT_OPEN = '{', JOINT_CLOSE = '}', BRANCH_OPEN = '[', BRANCH_CLOSE = ']', ROTATE = '+';
+	public const char DRAW = 'F', OBJECT = 'O', JOINT_OPEN = '{', JOINT_CLOSE = '}', BRANCH_OPEN = '[', BRANCH_CLOSE = ']', ROTATE = '+', EMPTY = '-';
     
 
     void Awake()
@@ -37,7 +36,6 @@ public class Parametric_Turtle : MonoBehaviour
 		branchStack = new Stack <TransformHolder>();
 		jointStack = new Stack<Joint>();
 		objList = new List<GameObject>();
-		lineList = new List<VectorLine>();
 		additionsList = new Dictionary<int, List<SystemModule>>();
 
 		p_l_sys = this.GetComponentInParent<Parametric_L_System> ();
@@ -50,9 +48,8 @@ public class Parametric_Turtle : MonoBehaviour
 		initialPosition = new Vector3 (transform.localPosition.x, 
 		                               transform.localPosition.y, 
 		                               transform.localPosition.z);
-
-		
 		jointStack.Push(p_l_sys.BaseNode.GetComponent<Joint>());
+        VectorLine.SetCamera3D(FindObjectOfType<Camera>());
 	}
 
 	void Update()
@@ -102,46 +99,34 @@ public class Parametric_Turtle : MonoBehaviour
 				case DRAW:
 				{
 					LineModule line = mod as LineModule;
+					Vector3 heading = line.GrowthFunction(line.LineLength) * transform.up;
 
-					float length = line.GrowthFunction(line.LineLength);
-					Vector3 heading = length * transform.up;
+                    GameObject lineObject = line.ObjectInstantiate();
+                    GameObject parent;
+                    if(line.jointed)
+                    {
+                        Joint thisJoint = jointStack.Peek();	//Assume every branch is jointed
+                        if (thisJoint is CharacterJoint)
+                        {
+                            CharacterJoint cj = thisJoint as CharacterJoint;
+                            cj.swingAxis = Vector3.Cross(p_l_sys.transform.up, heading.normalized);
+                        }
+                        else
+                        {
+                            thisJoint.axis = Vector3.Cross(p_l_sys.transform.up, heading.normalized);
+                        }
+                        parent = thisJoint.gameObject;
+                        line.ObjectInitialize(parent);
+                        lineObject.transform.localPosition = Vector3.zero;
+                    }
+                    else
+                    {
+                        parent = p_l_sys.gameObject;
+                        line.ObjectInitialize(parent);
+                        lineObject.transform.localPosition = this.transform.localPosition;
+                    }
 
-					line.LineObject = new GameObject();
-					line.LineObject.name = "LineSystemModule";
-
-					if(line.Jointed)
-					{
-						Debug.Log("Jointed Line");
-						Joint thisJoint = jointStack.Peek();	//Assume every branch is jointed
-						if (thisJoint is CharacterJoint)
-							{
-								CharacterJoint cj = thisJoint as CharacterJoint;
-								cj.swingAxis = Vector3.Cross(p_l_sys.transform.up, heading.normalized);
-							}
-						else
-						{
-							thisJoint.axis = Vector3.Cross(p_l_sys.transform.up, heading.normalized);
-						}
-						line.LineObject.transform.parent = thisJoint.gameObject.transform;
-						line.LineObject.transform.localPosition = heading;
-						line.Origin = Vector3.zero;
-						line.End = heading;
-					}
-					else
-					{
-						line.LineObject.transform.parent = p_l_sys.transform;
-						line.LineObject.transform.localPosition = this.transform.localPosition;
-						line.Origin = this.transform.localPosition;
-						line.End = this.transform.localPosition + heading;
-					}
-
-					line.MakeLine();
-					line.Line.SetWidth(line.GrowthFunction(line.LineWidth));
-					line.Line.drawTransform = line.LineObject.transform.parent;
-					line.Line.Draw3DAuto();
-
-					objList.Add(line.LineObject);	
-					lineList.Add(line.Line);
+					objList.Add(line.ModuleObject);	
 
 					transform.localPosition += heading;				
 				}
@@ -199,7 +184,7 @@ public class Parametric_Turtle : MonoBehaviour
 					GameObject obj = om.ObjectInstantiate();
 					obj.transform.position = this.transform.position;
 					obj.transform.rotation = this.transform.rotation;
-					Joint thisJoint = jointStack.Peek();	//Assume every branch is jointed
+					Joint thisJoint = jointStack.Peek();	
 					om.ObjectInitialize(thisJoint.gameObject);
 					objList.Add(obj);
 				}
@@ -209,6 +194,7 @@ public class Parametric_Turtle : MonoBehaviour
 			}	
 
 		mod.Age += Age;
+        mod.Age = Mathf.Clamp(mod.Age, 0, mod.TerminalAge);
 		//word[i] = mod;
 		}
 
@@ -247,9 +233,10 @@ public class Parametric_Turtle : MonoBehaviour
 
 	//Used for animation. We cannot possibly transform the VectorLines or the models correctly
 	//so we destroy them all and let the turtle create new, correctly oriented ones.
+    //Circumventing this process would greatly increase efficiency
 	public void destroyLines()
 	{
-		VectorLine.Destroy(lineList);
+		//VectorLine.Destroy(lineList);
 		foreach(GameObject go in objList)
 			GameObject.Destroy(go);
 		objList.Clear ();

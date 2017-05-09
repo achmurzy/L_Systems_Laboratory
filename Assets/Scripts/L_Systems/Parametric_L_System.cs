@@ -106,31 +106,30 @@ public class Parametric_L_System : MonoBehaviour
 
 	public void BuildDefaultSystem()
 	{
-		/*ObjectModule om = new ObjectModule('O', 0, 1, ObjectBuilder.OBJECT_PATH+ObjectList.SIMPLE_LEAF);
-		om.scale = Vector3.one * 0.5f;
-		om.rotation = new Vector3(90, 0, 0); 
+		ObjectModule om = new ObjectModule('O', 0, 1, GrowthList.LINEAR, ObjectBuilder.OBJECT_PATH+ObjectList.SIMPLE_LEAF);
+		om.scale = Vector3.one * 0.1f;
+		om.rotation = new Vector3(90, 0, 0);
 
-		ObjectModule om_right = new ObjectModule('O', 0, 1, ObjectBuilder.OBJECT_PATH+ObjectList.SIMPLE_LEAF);
-		om_right.scale = Vector3.one * 0.5f;
+        ObjectModule om_right = new ObjectModule('O', 0, 1, GrowthList.LINEAR, ObjectBuilder.OBJECT_PATH + ObjectList.SIMPLE_LEAF);
+		om_right.scale = Vector3.one * 0.1f;
 		om_right.rotation = new Vector3(90, 180, 0);
+        om_right.jointed = true;
 
-		ObjectModule om_z = new ObjectModule('O', 0, 1, ObjectBuilder.OBJECT_PATH+ObjectList.SIMPLE_LEAF);
-		om_z.scale = Vector3.one * 0.5f;
-		om_z.rotation = new Vector3(90, -90, 0); 
-
-		ObjectModule om_right_z = new ObjectModule('O', 0, 1, ObjectBuilder.OBJECT_PATH+ObjectList.SIMPLE_LEAF);
-		om_right_z.scale = Vector3.one * 0.5f;
-		om_right_z.rotation = new Vector3(90, 90, 0);
-
-		JointModule jm = new JointModule('[', 0, 1, JointBuilder.JOINT_PATH+JointModule.HINGE_JOINT);
+        JointModule jm = new JointModule('{', 0, 1, GrowthList.LINEAR, JointBuilder.JOINT_PATH + JointModule.HINGE_JOINT);
 		jm.jointSpringSpring = 10f;
 		jm.jointSpringDamper = 99f;
 
 		jm.jointLimitMin = -10;
 		jm.jointLimitMax = 10;
 
-		JointModule jmc = new JointModule('[', 0, 1, JointBuilder.JOINT_PATH+JointModule.CHARACTER_JOINT);
-		jmc.jointSpringSpring = 10f;
+        ObjectModule om_right_z = new ObjectModule('O', 0, 1, GrowthList.LOGISTIC, ObjectBuilder.OBJECT_PATH + ObjectList.SIMPLE_LEAF);
+        om_right_z.scale = Vector3.one * 0.1f;
+        om_right_z.rotation = new Vector3(90, 90, 0);
+
+        JointModule jmc = new JointModule('{', 0, 1, GrowthList.LINEAR, JointBuilder.JOINT_PATH + JointModule.CHARACTER_JOINT);
+        jmc.mass = 1;
+        
+        jmc.jointSpringSpring = 10f;
 		jmc.jointSpringDamper = 99f;
 
 		jmc.jointLimitMin = -10;
@@ -142,27 +141,28 @@ public class Parametric_L_System : MonoBehaviour
 		jmc.twistSpringSpring = 10f;
 		jmc.twistSpringDamper = 99f;
 
-		LineModule ln = new LineModule('F', 0, 1);
-		ln.LineWidth = 5f;
-		ln.LineLength = 1.0f;
+        LineModule ln = new LineModule('F', 0, 1, GrowthList.EXPONENTIAL);
+		ln.LineWidth = 0.1f;
+		ln.LineLength = 0.1f;
+        ln.jointed = true;
+
+        ObjectModule om_z = new ObjectModule('O', 0, 1, GrowthList.LINEAR, ObjectBuilder.OBJECT_PATH + ObjectList.SIMPLE_LEAF);
+        om_z.scale = Vector3.one * 0.1f;
+        om_z.rotation = new Vector3(90, -90, 0);
 
 		List<SystemModule> lm = new List<SystemModule>();
+        lm.Add(jmc.CopyModule());
 		lm.Add(ln.CopyModule());
-
-		lm.Add(jmc.CopyModule());
-		lm.Add(new RotationModule('+', 0, 1, new Vector3(1, 0, 0), 45f));
-		lm.Add(ln.CopyModule());
+        lm.Add(new SystemModule('[', 0, 1, GrowthList.NON_DEVELOPMENTAL));
 		lm.Add(jm.CopyModule());
+		lm.Add(new RotationModule('+', 0, 1, GrowthList.LINEAR, new Vector3(1, 0, 0), 45f));
 		lm.Add(om_right.CopyModule());
-		lm.Add(new SystemModule(']', 0, 1));
-		lm.Add(new SystemModule(']', 0, 1));
+        lm.Add(new SystemModule('}', 0, 1, GrowthList.NON_DEVELOPMENTAL));
+        lm.Add(new SystemModule(']', 0, 1, GrowthList.NON_DEVELOPMENTAL));
+        lm.Add(new SystemModule('1', 0, 1, GrowthList.NON_DEVELOPMENTAL));
+        lm.Add(new SystemModule('}', 0, 1, GrowthList.NON_DEVELOPMENTAL));
 
-		lm.Add(jm.CopyModule());
-		lm.Add(new SystemModule('1', 0, 1));
-		lm.Add(new SystemModule(']', 0, 1));
-
-		Productions.Add('1', lm);*/
-		Debug.Log("Arse");
+		Productions.Add('1', lm);
 	}
 
 	public bool newString = true;
@@ -215,6 +215,7 @@ public class Parametric_L_System : MonoBehaviour
 	{
 		string getit = ModuleHolder.SAVE_PATH + "/" + this.gameObject.name + "/" + this.gameObject.name + ModuleHolder.PATH_TAIL;
 		storedModules = Resources.Load(getit) as ModuleHolder;
+        Debug.Log(getit);
 		if(storedModules != null)
 		{
 			storedModules.LoadProductions(this);

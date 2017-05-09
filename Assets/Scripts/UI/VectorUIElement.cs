@@ -4,7 +4,7 @@ using System.Collections;
 
 public class VectorUIElement : MonoBehaviour 
 {
-    public Vector3 Vector { get { return GetVector(); } }
+    public Vector3 Vector { get { return GetVector(); } set { SetVector(value); } }
     public delegate void VectorSetter();
     public VectorSetter VectorFunction;
 
@@ -45,5 +45,15 @@ public class VectorUIElement : MonoBehaviour
             count++;
         }
         return thisVec;
+    }
+
+    private void SetVector(Vector3 vec)
+    {
+        int count = 0;
+        foreach (InputField inF in this.GetComponentsInChildren<InputField>())
+        {
+            inF.text = vec[count].ToString();
+            count++;
+        }
     }
 }

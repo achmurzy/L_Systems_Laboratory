@@ -6,72 +6,74 @@ using System.Collections.Generic;
 public class Production : MonoBehaviour 
 {
 	public char LHS { get; private set; }
-	private bool changeCaret;
-	public int LastCaretPosition { get; private set; }
-	public List<SystemModule> RHS { get; private set; }
+	public UIModule SelectedModule { get; set; }
+	public List<UIModule> RHS { get; private set; }
 
+    public GameObject panelLHS;
 	public Dropdown currentLHS;
-	public InputField currentRHS;
-	public Button RemoveButton;
+    public GameObject panelRHS;
 
 	void Awake ()
 	{
-		RHS = new List<SystemModule>();
-
-		//currentRHS = this.gameObject.transform.GetChild(1).gameObject.AddComponent<InputField>();
-		//currentRHS.textComponent = currentRHS.transform.GetChild(1).GetComponent<Text>();
-		//currentRHS.placeholder = currentRHS.transform.GetChild(0).gameObject.GetComponent<Text>();
-		//currentRHS.readOnly = true;
-		LastCaretPosition = currentRHS.caretPosition;
+		RHS = new List<UIModule>();
+        panelRHS = this.transform.GetChild(1).gameObject;
+        SelectedModule = this.GetComponentInChildren<UIModule>();
+        SelectedModule.Production = this;
+        RHS.Add(this.GetComponentInChildren<UIModule>());
 	}
 
 	// Use this for initialization
 	void Start () 
 	{
 		ModuleBuilder.FillSymbolDropdown(ref currentLHS, typeof(Parametric_Turtle));
-
-
+        currentLHS.onValueChanged.AddListener(delegate { SetSymbol(); });
 		SetSymbol();
+        Debug.Log(LHS);
 	}
 	
 	// Update is called once per frame
 	void Update () 
 	{
-		if(currentRHS.isFocused)
-		{
-			LastCaretPosition = currentRHS.caretPosition;
-			SetProduction();
-		}
+
 	}
 
 	public void AppendModule(SystemModule m)
 	{
 		SystemModule newMod = m.CopyModule();
-		RHS.Insert(LastCaretPosition, newMod);
+        GameObject newRHS = GameObject.Instantiate(Resources.Load("Prefabs/UI/Module")) as GameObject;
+        newRHS.transform.SetParent(panelRHS.transform, false);
+        newRHS.transform.SetSiblingIndex(SelectedModule.gameObject.transform.GetSiblingIndex());
+        newRHS.GetComponentInChildren<Text>().text = m.Symbol.ToString();
 
-		if(LastCaretPosition == 0)
-			currentRHS.text = m.Symbol + currentRHS.text;
-		else
-		{
-			currentRHS.text = currentRHS.text.Insert(LastCaretPosition, m.Symbol.ToString());
-		}
-		LastCaretPosition++;
+        UIModule uim = newRHS.GetComponent<UIModule>();
+        SelectedModule = uim;
+        RHS.Insert(SelectedModule.transform.GetSiblingIndex(), uim);
+        uim.Production = this;
+        uim.Module = newMod;
+        uim.InstantiateUI();
 	}
 
-	public void RemoveSystemModule ()
+	public void RemoveSystemModule () 
 	{		
-		if(RHS.Count > 0 && LastCaretPosition > 0)
+		if(RHS.Count > 0)
 		{
-			SystemModule m = RHS[LastCaretPosition - 1];
-			RHS.Remove(m);
-			currentRHS.text = currentRHS.text.Remove(LastCaretPosition - 1, 1);
-			LastCaretPosition--;
+            int selectedIndex = SelectedModule.transform.GetSiblingIndex();
+            if (selectedIndex != RHS.Count - 1) //Cannot remove last element
+            {
+                panelRHS.transform.GetChild(selectedIndex + 1).GetComponent<UIModule>().InstantiateUI();
+                RHS.Remove(RHS[selectedIndex]); //this is very, very bad
+                GameObject.Destroy(panelRHS.transform.GetChild(selectedIndex).gameObject); // because SelectedModule changes
+            }   //and it isn't obvious that it happens
 		}
 	}
 
-	public void SetProduction()
+	public void SetAsCurrent()
 	{
-		FindObjectOfType<ProductionBuilder>().currentProduction = this;
+		Production cp = FindObjectOfType<ProductionBuilder>().currentProduction;
+        if(cp != null)
+            cp.panelRHS.GetComponent<Image>().color = Color.white;
+        FindObjectOfType<ProductionBuilder>().currentProduction = this;
+        this.panelRHS.GetComponent<Image>().color = Color.green;
 	}
 
 	public void SetSymbol()

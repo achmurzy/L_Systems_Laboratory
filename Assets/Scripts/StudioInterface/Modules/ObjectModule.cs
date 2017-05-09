@@ -40,11 +40,11 @@ public class ObjectModule : SystemModule
 
 	public virtual void ObjectInitialize (GameObject parent)
 	{
-		ModuleObject.transform.parent = parent.transform;
+        ModuleObject.transform.rotation = Quaternion.Euler(rotation) * ModuleObject.transform.rotation;
 		if(jointed)
 		{
-			ModuleObject.transform.localPosition = Vector3.zero;
-			ModuleObject.transform.localRotation = Quaternion.Euler(rotation) * ModuleObject.transform.rotation;
+            ModuleObject.transform.parent = parent.transform;
+            ModuleObject.transform.localPosition = Vector3.zero;
 			Joint thisJoint = parent.GetComponent<Joint>();
 			thisJoint.axis = ModuleObject.transform.right.normalized;
 			thisJoint.enableCollision = !trigger;

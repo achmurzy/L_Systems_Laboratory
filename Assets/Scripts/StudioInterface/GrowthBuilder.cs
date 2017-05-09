@@ -11,12 +11,13 @@ public class GrowthBuilder : MonoBehaviour
 	public const string LINEAR = "LINEAR";
 
 	public static Dictionary<int, string> growthDictionary;
-	public Dropdown growthDropdown;
-	public SystemModule currentModule;
+	private Dropdown growthDropdown;
+	private SystemModule currentModule;
 
 	void Awake()
 	{
 		growthDictionary = new Dictionary<int, string>();
+        growthDropdown = GetComponentInChildren<Dropdown>();
 		growthDropdown.onValueChanged.AddListener ( delegate {	SetFunction();	});
 		ModuleBuilder.FillSymbolDropdown(ref growthDropdown, ref growthDictionary, typeof(GrowthBuilder));
 	}
@@ -24,7 +25,7 @@ public class GrowthBuilder : MonoBehaviour
 	// Use this for initialization
 	void Start () 
 	{
-		SetFunction();
+		//SetFunction();
 	}
 	
 	// Update is called once per frame
@@ -45,4 +46,10 @@ public class GrowthBuilder : MonoBehaviour
 	{
 		currentModule.Growth = growthDropdown.value;
 	}
+
+    public void SetUI(SystemModule sm)
+    {
+        currentModule = sm;
+        growthDropdown.value = sm.Growth;
+    }
 }

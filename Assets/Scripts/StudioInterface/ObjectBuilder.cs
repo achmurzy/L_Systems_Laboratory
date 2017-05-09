@@ -6,9 +6,10 @@ using System.Collections.Generic;
 public class ObjectBuilder : MonoBehaviour 
 {
 	public const string OBJECT_PATH = "Prefabs/ModuleObjects/";
-	public static Dictionary<int, string> objectDictionary;
-	public Dropdown objectDropdown;
-	public ObjectModule currentModule;
+	private static Dictionary<int, string> objectDictionary;
+    private static Dictionary<string, int> pathDictionary;
+	private Dropdown objectDropdown;
+	private ObjectModule currentModule;
 
 	public VectorUIElement ObjectEuler, ObjectScale;
 
@@ -22,9 +23,14 @@ public class ObjectBuilder : MonoBehaviour
 	void Start ()
 	{
 		objectDictionary = new Dictionary<int, string>();
+        pathDictionary = new Dictionary<string, int>();
+        objectDropdown = GetComponentInChildren<Dropdown>();
 		objectDropdown.onValueChanged.AddListener ( delegate {	SetPath();	});
 		ModuleBuilder.FillSymbolDropdown(ref objectDropdown, ref objectDictionary, typeof(ObjectList));
-
+        foreach(KeyValuePair<int, string> kvp in objectDictionary)
+        {
+            pathDictionary[OBJECT_PATH+kvp.Value] = kvp.Key;
+        }
 		ObjectEuler.ValueDelegate(SetEuler);
 		ObjectScale.ValueDelegate(SetScale);
 
@@ -41,6 +47,16 @@ public class ObjectBuilder : MonoBehaviour
 		SetScale();
 		SetEuler();
 	}
+
+    public void SetUI(ObjectModule om)
+    {
+        currentModule = om;
+        objectDropdown.value = pathDictionary[om.ObjectPath];
+        Trigger.isOn = om.trigger;
+        Jointed.isOn = om.jointed;
+        ObjectEuler.Vector = om.rotation;
+        ObjectScale.Vector = om.scale;
+    }
 	
 	// Update is called once per frame
 	void Update () 

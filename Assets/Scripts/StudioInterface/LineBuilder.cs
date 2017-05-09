@@ -4,49 +4,50 @@ using System.Collections;
 
 public class LineBuilder : MonoBehaviour 
 {
-	public Toggle bezierToggle, jointToggle;
-	public GameObject BezierPanel;
-	public VectorUIElement controlPoint1, controlPoint2;
-	public Slider resolutionSlider;
-	public Slider widthSlider, lengthSlider;
+	private Toggle jointToggle;	
+    public LabeledValueSlider widthSlider, lengthSlider;
 	public ColorPicker colorPicker;
 
-	public LineModule currentModule;
+	private LineModule currentModule;
 
-	public const float MAX_LINE_WIDTH = 2.5f;
-	public const int MAX_SEGMENTS = 25;
+	public const float MAX_LINE_WIDTH = 1.0f;
 
 	void Awake()
 	{
 		SetColor();
-
-		bezierToggle.onValueChanged.AddListener ( delegate { ToggleBezier();	} );
-		jointToggle.onValueChanged.AddListener ( delegate {	ToggleJointed();	} );
-
-		widthSlider.maxValue = MAX_LINE_WIDTH;
-		widthSlider.onValueChanged.AddListener( delegate { SetInitialWidth(); } );
-
-		lengthSlider.maxValue = MAX_LINE_WIDTH;
-		lengthSlider.onValueChanged.AddListener(delegate {	SetInitialLength();	} );
-
-		resolutionSlider.maxValue = MAX_SEGMENTS;
-		resolutionSlider.onValueChanged.AddListener ( delegate { SetResolution(); } );
-
-		controlPoint1.ValueDelegate(SetControls);
-		controlPoint2.ValueDelegate(SetControls);
 	}
+
+    void Start()
+    {
+        jointToggle = GameObject.Find("JointToggle").GetComponent<Toggle>();
+        jointToggle.onValueChanged.AddListener(delegate { ToggleJointed(); });
+
+        widthSlider.Slider.value = 1;
+        widthSlider.Slider.maxValue = MAX_LINE_WIDTH;
+        widthSlider.Slider.onValueChanged.AddListener(delegate { SetInitialWidth(); });
+
+        lengthSlider.Slider.value = 1;
+        lengthSlider.Slider.maxValue = MAX_LINE_WIDTH;
+        lengthSlider.Slider.onValueChanged.AddListener(delegate { SetInitialLength(); });
+    }
 
 	public void Init (LineModule lm) 
 	{
 		currentModule = lm;
-		ToggleBezier();
 		ToggleJointed();
 		SetColor();
-		SetControls();
-		SetResolution();
 		SetInitialWidth();
 		SetInitialLength();
 	}
+
+    public void SetUI(LineModule lm)
+    {
+        currentModule = lm;
+        jointToggle.isOn = lm.jointed;
+        widthSlider.Slider.value = lm.LineWidth;
+        lengthSlider.Slider.value = lm.LineLength;
+        colorPicker.CurrentColor = lm.DrawColor;
+    }
 	
 	// Update is called once per frame
 	void Update () 
@@ -54,36 +55,19 @@ public class LineBuilder : MonoBehaviour
 
 	}
 
-	public void ToggleBezier()
-	{
-		currentModule.Bezier = bezierToggle.isOn;
-		BezierPanel.SetActive(bezierToggle.isOn);
-	}
-
 	public void ToggleJointed ()
 	{
-		currentModule.Jointed = jointToggle.isOn;
-	}
-
-	public void SetControls()
-	{
-		currentModule.ControlPoint1 = controlPoint1.Vector;
-		currentModule.ControlPoint2 = controlPoint2.Vector;
-	}
-
-	public void SetResolution()
-	{
-		currentModule.bezierResolution = (int)resolutionSlider.value;
+		currentModule.jointed = jointToggle.isOn;
 	}
 
 	public void SetInitialWidth ()
 	{
-		currentModule.LineWidth = widthSlider.value;
+		currentModule.LineWidth = widthSlider.Slider.value;
 	}
 
 	public void SetInitialLength ()
 	{
-		currentModule.LineLength = lengthSlider.value;
+		currentModule.LineLength = lengthSlider.Slider.value;
 	}
 
 	public void SetColor()

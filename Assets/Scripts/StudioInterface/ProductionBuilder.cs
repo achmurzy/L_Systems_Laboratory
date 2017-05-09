@@ -16,22 +16,23 @@ public class ProductionBuilder : MonoBehaviour
 	public const int MAX_PRODUCTIONS = 10;
 	public Production currentProduction;
 
-	public Button addButton;
-	public Button removeButton;
-
-	public InputField Name;
-
-	public Text OutputArea;
+	private InputField Name;
+	private Text OutputArea;
 
 	void Awake()
 	{
-		productionSet = new List<GameObject>();
+	    productionSet = new List<GameObject>();
+        GetComponentInChildren<Production>().SetAsCurrent();
+        productionSet.Add(currentProduction.gameObject);
 	}
 
 	// Use this for initialization
 	void Start () 
 	{
-	
+        Name = GetComponentInChildren<InputField>();
+        Name.onEndEdit.AddListener(delegate { SetName(); });
+        SystemName = "Default";
+        OutputArea = GameObject.Find("OutputArea").GetComponent<Text>();
 	}
 	
 	// Update is called once per frame
@@ -58,11 +59,12 @@ public class ProductionBuilder : MonoBehaviour
 		if(productionSet.Count < MAX_PRODUCTIONS)
 		{
 			GameObject prod = GameObject.Instantiate(Resources.Load(PRODUCTION_PATH)) as GameObject;
-			prod.transform.parent = ProductionPanel.transform;
+			prod.transform.SetParent(ProductionPanel.transform, false);
 			prod.transform.localPosition = ProductionPanel.GetComponent<RectTransform>().sizeDelta/2;
 			productionSet.Add(prod);
 
-			currentProduction = prod.GetComponentInChildren<Production>();
+			prod.GetComponentInChildren<Production>().SetAsCurrent();
+            currentProduction.RHS[0].InstantiateUI();
 		}
 	}
 
@@ -88,53 +90,51 @@ public class ProductionBuilder : MonoBehaviour
 		}
 	}
 
-	private void InstantiateSystem()
+	public void InstantiateSystem()
 	{
-		if(parametricSystem != null)
+		if(parametricSystem != null)               //Set-up object
 			GameObject.Destroy(parametricSystem.gameObject);
 		GameObject system = GameObject.Instantiate(Resources.Load("Prefabs/L_Systems/BlankParametric")) as GameObject;
+        system.transform.position = Vector3.zero;
+        system.transform.Rotate(new Vector3(0, 90, 0));
 		parametricSystem = system.GetComponent<Parametric_L_System>();
-	}
+        parametricSystem.name = SystemName;
+        FindObjectOfType<LaboratoryCamera>().SetFocus(parametricSystem.gameObject);
 
-	public void BuildSystem()
-	{
-		InstantiateSystem();
-		foreach(GameObject go in productionSet)
-		{
-			Production pp = go.GetComponent<Production>();
-			parametricSystem.Productions.Add(pp.LHS, pp.RHS);
-
-			string fuck = "";
-			//foreach(SystemModule m in pp.RHS)
-			//	fuck += m.Print() + "\n";
-			//Debug.Log(pp.LHS + fuck);
-		}
-		parametricSystem.name = SystemName;
-		parametricSystem.gameObject.transform.position = new Vector3(15, 0, 15);
-		parametricSystem.gameObject.transform.LookAt(Vector3.zero);
-		OutputArea.text = parametricSystem.PrintSystem();
+        foreach (GameObject go in productionSet) //Add productions
+        {
+            Production pp = go.GetComponent<Production>();
+            List<SystemModule> moduleList = new List<SystemModule>();
+            foreach (UIModule uim in pp.RHS)
+            {
+                if (uim.Module.Symbol != Parametric_Turtle.EMPTY)
+                    moduleList.Add(uim.Module);
+            }
+            parametricSystem.Productions.Add(pp.LHS, moduleList);
+        }
+        OutputArea.text = parametricSystem.PrintSystem();
 	}
 
 	public void SaveSystem()
 	{
-		if(!AssetDatabase.IsValidFolder("Assets/Resources/" + ModuleHolder.SAVE_PATH + "/" + parametricSystem.name))
+        InstantiateSystem();
+        if (!AssetDatabase.IsValidFolder("Assets/Resources/" + ModuleHolder.SAVE_PATH + "/" + parametricSystem.name))
         {
-	        ModuleHolder mh = ScriptableObject.CreateInstance<ModuleHolder>();
-			mh.StoreLSystem(parametricSystem);
-			InstantiateSystem();
-			PrefabUtility.CreatePrefab(PREFAB_PATH + parametricSystem.name + "/" + 
-										parametricSystem.name + ".prefab", parametricSystem.gameObject);
-			parametricSystem.enabled = false;
-		}
-		else
-			Debug.Log("A system so named already existed; rename your specimen");
+            ModuleHolder mh = ScriptableObject.CreateInstance<ModuleHolder>();
+            mh.StoreLSystem(parametricSystem);
+            PrefabUtility.CreatePrefab(PREFAB_PATH + parametricSystem.name + "/" +
+                                        parametricSystem.name + ".prefab", parametricSystem.gameObject);
+            parametricSystem.enabled = false;
+        }
+        else
+            Debug.Log("A system so named already existed; rename your specimen");
 	}
 
 	public void DefaultSystem()
 	{
 		InstantiateSystem();
 		parametricSystem.BuildDefaultSystem();
-		parametricSystem.gameObject.transform.position = new Vector3(10, 2.5f, 10);
+		parametricSystem.gameObject.transform.position = new Vector3(0, 0, 0);
 		FindObjectOfType<LaboratoryCamera>().SetFocus(parametricSystem.gameObject);
 		OutputArea.text = parametricSystem.PrintSystem();
 	}
@@ -150,8 +150,9 @@ public class ProductionBuilder : MonoBehaviour
         {	
         	AddProduction();
         	currentProduction.currentLHS.value = Production.SymbolIndexConverter(kvp.Key);
-    		foreach(SystemModule sm in kvp.Value)
+    		for(int i = kvp.Value.Count; i > 0; i--) 
     		{
+                SystemModule sm = kvp.Value[i - 1];
     			currentProduction.AppendModule(sm);
     		}
         }

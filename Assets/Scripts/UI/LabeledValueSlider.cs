@@ -4,15 +4,21 @@ using System.Collections;
 
 public class LabeledValueSlider : MonoBehaviour 
 {
-	public Slider slider;
-	public Text text;
+	private Slider slider;
+    public Slider Slider { get { return slider; } }
+	private Text text;
+
+    void Awake()
+    {
+        slider = GetComponentInChildren<Slider>();
+        text = transform.GetChild(2).GetComponent<Text>();
+        slider.onValueChanged.AddListener(delegate { text.text = slider.value.ToString(); });
+    }
 
 	// Use this for initialization
 	void Start () 
 	{
-		slider = GetComponentInChildren<Slider>();
-		text = transform.GetChild(2).GetComponent<Text>();
-		slider.onValueChanged.AddListener( delegate {	text.text = slider.value.ToString();	} );
+		
 	}
 	
 	// Update is called once per frame

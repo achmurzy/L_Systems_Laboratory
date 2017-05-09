@@ -6,62 +6,69 @@ using System.Collections.Generic;
 
 public class ModuleBuilder : MonoBehaviour 
 {
-	SystemModule currentModule;
+    public UIModule uiModule;
+    private bool editModule = false;
+    SystemModule currentModule { get { return uiModule.Module; } set { uiModule.Module = value; } }
 	ProductionBuilder productions;
 
 	List<GameObject> PanelList;
 
 	public static Dictionary<int, string> dropdownDictionary;
+    public static Dictionary<string, int> symbolDictionary;
 	public Dropdown symbolDropdown;
 
 	public GameObject DrawPanel;
-	public LineBuilder lineBuilder;
+	private LineBuilder lineBuilder;
 
 	public GameObject JointPanel;
-	public JointBuilder jointBuilder;
+	private JointBuilder jointBuilder;
 
 	public GameObject ObjectPanel;
-	public ObjectBuilder objectBuilder;
+	private ObjectBuilder objectBuilder;
 
 	public GameObject RotationPanel;
-	public RotationBuilder rotationBuilder;
+	private RotationBuilder rotationBuilder;
 
 	public GameObject GrowthPanel;
-	public GrowthBuilder growthBuilder;
+	private GrowthBuilder growthBuilder;
 
 	public const float AGE_MIN = -1f, AGE_MAX = 10f;
-	public Slider terminalAge;
-	public Button addButton;
+
+    public GameObject TerminalSlider;
+	private LabeledValueSlider terminalAge;
 
 	void Awake()
 	{
-		currentModule = new SystemModule();
-		dropdownDictionary = new Dictionary<int, string>();
-
+        dropdownDictionary = new Dictionary<int, string>();
+        symbolDictionary = new Dictionary<string, int>();
 		FillSymbolDropdown(ref symbolDropdown, ref dropdownDictionary, typeof(Parametric_Turtle));
+        foreach (KeyValuePair<int, string> kvp in dropdownDictionary)
+        { symbolDictionary[kvp.Value] = kvp.Key; }
 
 		PanelList = new List<GameObject>();
 		PanelList.Add(ObjectPanel);
 		PanelList.Add(DrawPanel);
 		PanelList.Add(JointPanel);
 		PanelList.Add(RotationPanel);
+
+        lineBuilder = DrawPanel.GetComponent<LineBuilder>();
+        objectBuilder = ObjectPanel.GetComponent<ObjectBuilder>();
+        jointBuilder = JointPanel.GetComponent<JointBuilder>();
+        rotationBuilder = RotationPanel.GetComponent<RotationBuilder>();
+        growthBuilder = GrowthPanel.GetComponent<GrowthBuilder>();
 	}
 
 	// Use this for initialization
 	void Start () 
 	{
 		productions = FindObjectOfType<ProductionBuilder>();
+        terminalAge = TerminalSlider.GetComponent<LabeledValueSlider>();
+		terminalAge.Slider.onValueChanged.AddListener ( delegate {	SetTerminal();	} );
+		terminalAge.Slider.minValue = AGE_MIN;
+		terminalAge.Slider.maxValue = AGE_MAX;
 
-		terminalAge.onValueChanged.AddListener ( delegate {	SetTerminal();	} );
-		terminalAge.minValue = AGE_MIN;
-		terminalAge.maxValue = AGE_MAX;
-
-		SetSymbol();
-		currentModule.Age = 0f;
-		currentModule.TerminalAge = AGE_MAX;
-
-		SetTerminal();
-		DisablePanels();
+        symbolDropdown.onValueChanged.AddListener(delegate { SetSymbol(); });
+        productions.currentProduction.GetComponentInChildren<UIModule>().InstantiateUI();
 	}
 	
 	// Update is called once per frame
@@ -70,50 +77,112 @@ public class ModuleBuilder : MonoBehaviour
 
 	}
 
+    public void FillBuilderUI(UIModule uim)
+    {
+        if (uim != uiModule)
+        {
+            Debug.Log("Symbol: " + uim.Module.Symbol);
+            Debug.Log("Growth: " + uim.Module.Growth);
+            uim.GetComponent<Image>().color = Color.green;
+            if (uiModule != null)
+                uiModule.GetComponent<Image>().color = Color.white;
+            uiModule = uim;
+            editModule = true;  //Distinguish between true edit and UI change
+            DisablePanels();
+            if (productions.currentProduction.RHS.IndexOf(uim) != productions.currentProduction.RHS.Count - 1)
+            {
+                symbolDropdown.gameObject.SetActive(true);
+                switch (currentModule.Symbol)
+                {
+                    case Parametric_Turtle.DRAW:
+                        DrawPanel.gameObject.SetActive(true);
+                        lineBuilder.SetUI(currentModule as LineModule);
+                        break;
+                    case Parametric_Turtle.JOINT_OPEN:
+                        JointPanel.gameObject.SetActive(true);
+                        jointBuilder.SetUI(currentModule as JointModule);
+                        break;
+                    case Parametric_Turtle.OBJECT:
+                        ObjectPanel.gameObject.SetActive(true);
+                        objectBuilder.SetUI(currentModule as ObjectModule);
+                        break;
+                    case Parametric_Turtle.ROTATE:
+                        RotationPanel.gameObject.SetActive(true);
+                        rotationBuilder.SetUI(currentModule as RotationModule);
+                        break;
+                    default:
+                        break;
+                }
+                symbolDropdown.value = symbolDictionary[currentModule.Symbol.ToString()]; //Will trigger SetSymbol
+                terminalAge.Slider.value = currentModule.TerminalAge;
+                growthBuilder.SetUI(currentModule);
+            }
+            else
+                symbolDropdown.gameObject.SetActive(false);
+            editModule = false;
+        }
+    }
+
 	public void SetSymbol ()
 	{
-		DisablePanels();
-		switch(dropdownDictionary[symbolDropdown.value][0])
-		{
-			case Parametric_Turtle.DRAW:
-				currentModule = new LineModule();
-				lineBuilder.Init(currentModule as LineModule);
-				DrawPanel.gameObject.SetActive(true);
-				break;
-			case Parametric_Turtle.JOINT_OPEN:
-				currentModule = new JointModule();
-				jointBuilder.Init(currentModule as JointModule);
-				JointPanel.gameObject.SetActive(true);
-				break;
-			case Parametric_Turtle.OBJECT:
-				currentModule = new ObjectModule();
-				objectBuilder.Init(currentModule as ObjectModule);
-				ObjectPanel.gameObject.SetActive(true);
-				break;
-			case Parametric_Turtle.ROTATE:
-				currentModule = new RotationModule();
-				rotationBuilder.Init(currentModule as RotationModule);
-				RotationPanel.gameObject.SetActive(true);
-				break;
-			default:
-				currentModule = new SystemModule();
-				break;		
-		}
+        if (!editModule)
+        {
+            if (productions.currentProduction != null) //Reflect symbol change on UIModule
+            {
+                uiModule.GetComponentInChildren<Text>().text =
+                     dropdownDictionary[symbolDropdown.value];
+            }
+            DisablePanels();
+            switch (dropdownDictionary[symbolDropdown.value][0])
+            {
+                case Parametric_Turtle.DRAW:
+                    currentModule = new LineModule();
+                    lineBuilder.Init(currentModule as LineModule);
+                    DrawPanel.gameObject.SetActive(true);
+                    break;
+                case Parametric_Turtle.JOINT_OPEN:
+                    currentModule = new JointModule();
+                    jointBuilder.Init(currentModule as JointModule);
+                    JointPanel.gameObject.SetActive(true);
+                    break;
+                case Parametric_Turtle.OBJECT:
+                    currentModule = new ObjectModule();
+                    objectBuilder.Init(currentModule as ObjectModule);
+                    ObjectPanel.gameObject.SetActive(true);
+                    break;
+                case Parametric_Turtle.ROTATE:
+                    currentModule = new RotationModule();
+                    rotationBuilder.Init(currentModule as RotationModule);
+                    RotationPanel.gameObject.SetActive(true);
+                    break;
+                default:
+                    currentModule = new SystemModule();
+                    break;
+            }
 
-		SetTerminal();
-		growthBuilder.Init(currentModule);
-		currentModule.Symbol = dropdownDictionary[symbolDropdown.value][0];
+            SetTerminal();
+            growthBuilder.Init(currentModule);
+            currentModule.Symbol = dropdownDictionary[symbolDropdown.value][0];
+        }
+        else
+            editModule = false;
 	}
 
 	public void SetTerminal()
 	{
-		currentModule.TerminalAge = terminalAge.value;
+		currentModule.TerminalAge = terminalAge.Slider.value;
 	}
 
-	public void AddModule ()
+	public void InsertModule ()
 	{
-		productions.currentProduction.AppendModule(currentModule);
+        productions.currentProduction.AppendModule(currentModule);
+        symbolDropdown.value = symbolDictionary["-"];
 	}
+
+    public void RemoveModule()
+    {
+        productions.currentProduction.RemoveSystemModule();
+    }
 
 	public static void FillSymbolDropdown (ref Dropdown d, System.Type type)
 	{

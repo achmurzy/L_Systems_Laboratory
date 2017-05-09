@@ -46,16 +46,14 @@ public class SystemModule : ScriptableObject
 		}
 	}
 
-	//We can't achieve logistic growth without a state variable. This exponential constant is empirically derived for plant growth forms
-	public const float EXPONENTIAL_CONSTANT = 0.48f;
 	public float LogisticGrowth (float trait) 
 	{
-		return trait * Age * Mathf.Exp((1f - Mathf.Clamp(TerminalAge - Age, 0f, 1f)) * EXPONENTIAL_CONSTANT);
+		return trait * Age * Mathf.Exp((1f - Mathf.Clamp(TerminalAge - Age, 0f, 1f)) * 0.48f);
 	}
 
 	public float ExponentialGrowth(float trait)
 	{
-		return trait * Mathf.Exp(Age * EXPONENTIAL_CONSTANT);
+		return trait * Mathf.Exp(Age * 0.48f);
 	}
 
 	public float LinearGrowth (float trait)
