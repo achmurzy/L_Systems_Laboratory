@@ -20,9 +20,20 @@ public class SystemModule : ScriptableObject
 
 	public virtual SystemModule CopyModule()
 	{
-		SystemModule sm = new SystemModule(Symbol, Age, TerminalAge, Growth);
+        SystemModule sm = SystemModule.CreateInstance<SystemModule>();
+        sm.Symbol = Symbol;
+        sm.Age = Age;
+        sm.TerminalAge = TerminalAge;
+        sm.Growth = Growth;
 		return sm;
 	}
+
+    public virtual void InstantiateModule(Parametric_Turtle turtle)
+    { }
+
+    //Give the module access to the turtle to do what it needs to do
+    public virtual void UpdateModule(Parametric_Turtle turtle)
+    { }
 
 	public float GrowthFunction (float trait)
 	{

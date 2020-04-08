@@ -1,14 +1,15 @@
 ﻿using UnityEngine;
+using UnityEngine;
 using Vectrosity;
 using System.Collections;
 using System.Collections.Generic;
 
 public class Parametric_Turtle : MonoBehaviour 
 {
-	private Parametric_L_System p_l_sys;
-	private Dictionary <int, List<SystemModule>> additionsList;
+	public Parametric_L_System p_l_sys;
+	protected Dictionary <int, List<SystemModule>> additionsList;
 
-    private struct TransformHolder 
+    public struct TransformHolder 
     {
         public Vector3 position; 
         public Quaternion rotation; 
@@ -20,21 +21,26 @@ public class Parametric_Turtle : MonoBehaviour
         }
     }
 
-    private Stack<TransformHolder> branchStack;
+    public int DepthCounter = 0;
+    public Stack<ApexModule> apexStack;
+    public Stack<TransformHolder> branchStack;
     private Stack<Joint> jointStack;
-    private List<GameObject> objList;
+    
+    public List<GameObject> objList;
 
-    private Vector3 initialPosition;
-    private Quaternion saveOrientation;
+    protected Vector3 initialPosition;
+    protected Quaternion saveOrientation;
 
 	public const int PRODUCTION_ONE = 1, PRODUCTION_TWO = 2, PRODUCTION_THREE = 3, PRODUCTION_FOUR = 4, PRODUCTION_FIVE = 5;
-	public const char DRAW = 'F', OBJECT = 'O', JOINT_OPEN = '{', JOINT_CLOSE = '}', BRANCH_OPEN = '[', BRANCH_CLOSE = ']', ROTATE = '+', EMPTY = '-';
+	public const char DRAW = 'F', OBJECT = 'O', JOINT_OPEN = '{', JOINT_CLOSE = '}', BRANCH_OPEN = '[', BRANCH_CLOSE = ']', 
+                        MESH = 'M', PHYSICS = 'P', ROTATE = '+', EMPTY = '-';
     
 
     void Awake()
     {
 		branchStack = new Stack <TransformHolder>();
 		jointStack = new Stack<Joint>();
+        apexStack = new Stack<ApexModule>();
 		objList = new List<GameObject>();
 		additionsList = new Dictionary<int, List<SystemModule>>();
 
@@ -48,7 +54,6 @@ public class Parametric_Turtle : MonoBehaviour
 		initialPosition = new Vector3 (transform.localPosition.x, 
 		                               transform.localPosition.y, 
 		                               transform.localPosition.z);
-		jointStack.Push(p_l_sys.BaseNode.GetComponent<Joint>());
         VectorLine.SetCamera3D(FindObjectOfType<Camera>());
 	}
 
@@ -57,195 +62,95 @@ public class Parametric_Turtle : MonoBehaviour
 
 	}
 
-	public void TurtleAnalysis(List<SystemModule> word, float Age)
+	public void TurtleAnalysis(float age)
 	{
-		destroyLines ();
-		stir (word, Age);
-	}
+        List<SystemModule> word = p_l_sys.returnList;
 
-	void stir(List<SystemModule> word, float Age)
-	{
-		p_l_sys.BaseNode.transform.localRotation = Quaternion.identity;
-		transform.localPosition = new Vector3(initialPosition.x,
-		                                      initialPosition.y,
-		                                      initialPosition.z);
+        p_l_sys.BaseNode.transform.localRotation = Quaternion.identity;
+        transform.localPosition = new Vector3(initialPosition.x,
+                                              initialPosition.y,
+                                              initialPosition.z);
 
-		saveOrientation = new Quaternion(transform.rotation.x,
-		                                 transform.rotation.y,
-		                                 transform.rotation.z,
-		                                 transform.rotation.w);
+        saveOrientation = new Quaternion(transform.rotation.x,
+                                         transform.rotation.y,
+                                         transform.rotation.z,
+                                         transform.rotation.w);
 
-		jointStack.Push(p_l_sys.BaseNode.GetComponent<Joint>());
+        jointStack.Push(p_l_sys.BaseNode.GetComponent<Joint>());
 
-		for(int i = 0; i < word.Count; i++)
-		{
-			SystemModule mod = word[i];
-			if(p_l_sys.Productions.ContainsKey(mod.Symbol))
-			{
-				if(mod.Age >= mod.TerminalAge && mod.TerminalAge >= 0)
-				{
-					List<SystemModule> newList = new List<SystemModule>();
-					for(int j = 0; j < p_l_sys.Productions [mod.Symbol].Count; j++)
-					{
-						SystemModule m = p_l_sys.Productions [mod.Symbol][j].CopyModule();
-						newList.Add(m);
-					}
+        for (int i = 0; i < word.Count; i++)
+        {
+            SystemModule mod = word[i];
+            mod.Age += age;
+            mod.Age = Mathf.Clamp(mod.Age, 0, mod.TerminalAge);
+            mod.UpdateModule(this);
 
-					additionsList.Add(i, newList);
-				}
-			}
-			switch(mod.Symbol)
-			{
-				case DRAW:
-				{
-					LineModule line = mod as LineModule;
-					Vector3 heading = line.GrowthFunction(line.LineLength) * transform.up;
-
-                    GameObject lineObject = line.ObjectInstantiate();
-                    GameObject parent;
-                    if(line.jointed)
+            if (p_l_sys.Productions.ContainsKey(mod.Symbol))
+            {
+                bool apex_ready = true;
+                if (mod is ApexModule)
+                {
+                    if ((mod as ApexModule).mature)
                     {
-                        Joint thisJoint = jointStack.Peek();	//Assume every branch is jointed
-                        if (thisJoint is CharacterJoint)
-                        {
-                            CharacterJoint cj = thisJoint as CharacterJoint;
-                            cj.swingAxis = Vector3.Cross(p_l_sys.transform.up, heading.normalized);
-                        }
-                        else
-                        {
-                            thisJoint.axis = Vector3.Cross(p_l_sys.transform.up, heading.normalized);
-                        }
-                        parent = thisJoint.gameObject;
-                        line.ObjectInitialize(parent);
-                        lineObject.transform.localPosition = Vector3.zero;
-                    }
-                    else
-                    {
-                        parent = p_l_sys.gameObject;
-                        line.ObjectInitialize(parent);
-                        lineObject.transform.localPosition = this.transform.localPosition;
+                        apex_ready = false;
                     }
 
-					objList.Add(line.ModuleObject);	
+                }
+                //May need to move this to inside modules so that they can develop independently?
+                if (mod.Age >= mod.TerminalAge && mod.TerminalAge >= 0 && apex_ready)
+                {
+                    
+                    List<SystemModule> newList = new List<SystemModule>();
+                    for (int j = 0; j < p_l_sys.Productions[mod.Symbol].Count; j++)
+                    {
+                        SystemModule m = p_l_sys.Productions[mod.Symbol][j].CopyModule();
+                        m.InstantiateModule(this);
+                        newList.Add(m);
+                    }
 
-					transform.localPosition += heading;				
-				}
-					break;
-				case JOINT_OPEN:
-				{
-					JointModule jm = mod as JointModule;
-					GameObject obj = jm.ObjectInstantiate();
-					obj.transform.parent = p_l_sys.transform;
-					obj.transform.localPosition = this.transform.localPosition;
-					obj.transform.localRotation = this.transform.localRotation;
+                    if(mod is ApexModule)
+                    {
+                        ApexModule am = mod as ApexModule;
+                        am.Apex.ProximalModules = newList;
+                        am.mature = true;    
+                    }
+                    else if(mod is PhysicsMoverModule)
+                    {
+                        PhysicsMoverModule pmm = mod as PhysicsMoverModule;
+                        pmm.ProximalModules = newList;
+                        pmm.PhysicsModule.GetComponent<ModuleBehaviour>().ProximalModules = newList;
+                    }
+                    additionsList.Add(i, newList);
+                }
+            }
+        }
+        apexStack.Clear();
 
-					GameObject parentJoint = jointStack.Peek().gameObject;
-					/*Debug.Log("TurtleWorld: " + this.transform.position);
-					Debug.Log("TurtleLocal: " + this.transform.localPosition);
-					Debug.Log("JointWorld: " + obj.transform.position);
-					Debug.Log("JointLocal: " + obj.transform.localPosition);
-					Debug.Log("ConnectorWorld: " + parentJoint.transform.position);
-					Debug.Log("ConnectorLocal: " + parentJoint.transform.localPosition);
-					Debug.Log("TurtleDifference: " + (this.transform.localPosition - parentJoint.transform.localPosition));*/
-					jm.ObjectInitialize(jointStack.Peek().gameObject);
-					jointStack.Push(jm.NodeJoint);
-					objList.Add(obj);
-				}
-					break;
-				case JOINT_CLOSE:
-				{
-					jointStack.Pop();
-				}
-					break;
-				case BRANCH_OPEN:
-				{
-					TransformHolder pushTrans = new TransformHolder(); 
-					pushTrans.Store(transform);
-					branchStack.Push(pushTrans);
-				}
-					break;				
-				case BRANCH_CLOSE:					
-				{ 
-					TransformHolder popTrans = (TransformHolder)branchStack.Pop();
-					transform.localPosition = new Vector3(popTrans.position.x, popTrans.position.y, popTrans.position.z);
-					transform.localRotation = new Quaternion(popTrans.rotation.x, popTrans.rotation.y, 
-													popTrans.rotation.z, popTrans.rotation.w);
-				}
-					break;	
-				case ROTATE:
-				{
-					RotationModule rm = mod as RotationModule;
-					transform.Rotate(rm.RotationAxis, rm.GrowthFunction(rm.RotationScalar));
-				}
-					break;
-				case OBJECT:
-				{
-					ObjectModule om = mod as ObjectModule;
-					GameObject obj = om.ObjectInstantiate();
-					obj.transform.position = this.transform.position;
-					obj.transform.rotation = this.transform.rotation;
-					Joint thisJoint = jointStack.Peek();	
-					om.ObjectInitialize(thisJoint.gameObject);
-					objList.Add(obj);
-				}
-					break;
-				default:
-				break;
-			}	
+        if (additionsList.Count != 0)
+        {
+            p_l_sys.newString = true;
+            int i = -1;
 
-		mod.Age += Age;
-        mod.Age = Mathf.Clamp(mod.Age, 0, mod.TerminalAge);
-		//word[i] = mod;
-		}
-
-		if(additionsList.Count != 0)
-		{
-			p_l_sys.newString = true;
-			addNewProductions();
-		}
-		transform.rotation = new Quaternion(saveOrientation.x, 
-		                                    saveOrientation.y,
-		                                    saveOrientation.z,
-		                                    saveOrientation.w);
-	}
-
-	void addNewProductions()
-	{
-		int i = -1;
-
-		foreach(KeyValuePair<int, List<SystemModule>> kvp in additionsList)
-		{
-			if(i == -1)
-			{
-				i = kvp.Value.Count - 1;
-				p_l_sys.returnList.RemoveAt(kvp.Key);
-				p_l_sys.returnList.InsertRange(kvp.Key, kvp.Value);
-			}
-			else
-			{
-				p_l_sys.returnList.RemoveAt(i+kvp.Key);
-				p_l_sys.returnList.InsertRange(i+kvp.Key, kvp.Value);
-				i += kvp.Value.Count - 1;
-			}
-		}
-		additionsList.Clear ();
-	}
-
-	//Used for animation. We cannot possibly transform the VectorLines or the models correctly
-	//so we destroy them all and let the turtle create new, correctly oriented ones.
-    //Circumventing this process would greatly increase efficiency
-	public void destroyLines()
-	{
-		//VectorLine.Destroy(lineList);
-		foreach(GameObject go in objList)
-			GameObject.Destroy(go);
-		objList.Clear ();
-		jointStack.Clear();
-	}
-
-	public void destroySystem ()
-	{
-		GameObject.Destroy (transform.parent.gameObject);
-		GameObject.Destroy (gameObject);
-	}
+            foreach (KeyValuePair<int, List<SystemModule>> kvp in additionsList)
+            {
+                if (i == -1) //First iteration
+                {
+                    i = kvp.Value.Count;
+                    //p_l_sys.returnList.RemoveAt(kvp.Key);
+                    p_l_sys.returnList.InsertRange(kvp.Key + 1, kvp.Value);
+                }
+                else //every other
+                {
+                    //p_l_sys.returnList.RemoveAt(i + kvp.Key);
+                    p_l_sys.returnList.InsertRange(i + kvp.Key + 1, kvp.Value);
+                    i += kvp.Value.Count;
+                }
+            }
+            additionsList.Clear();
+        }
+        transform.rotation = new Quaternion(saveOrientation.x,
+                                            saveOrientation.y,
+                                            saveOrientation.z,
+                                            saveOrientation.w);
+    }
 }

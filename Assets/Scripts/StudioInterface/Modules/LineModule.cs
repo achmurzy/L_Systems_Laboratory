@@ -24,8 +24,12 @@ public class LineModule : ObjectModule
 
 	public override SystemModule CopyModule()
 	{
-		LineModule lm = new LineModule(Symbol, Age, TerminalAge, Growth);
-
+        LineModule lm = LineModule.CreateInstance<LineModule>();
+        lm.Symbol = Symbol;
+        lm.Age = Age;
+        lm.TerminalAge = TerminalAge;
+        lm.Growth = Growth;
+        
 		lm.DrawColor = DrawColor;
 		lm.LineWidth = LineWidth;
 		lm.LineLength = LineLength;
@@ -33,25 +37,46 @@ public class LineModule : ObjectModule
 		return lm;
 	}
 
-	// Use this for initialization
-	void Start () 
-	{
-	
-	}
-
-    public override GameObject ObjectInstantiate()
+    public override void InstantiateModule(Parametric_Turtle turtle)
     {
-        ModuleObject = GameObject.Instantiate(Resources.Load(LineModule.STEM_PATH)) as GameObject;
+        ModuleObject = GameObject.Instantiate(Resources.Load(LineModule.STEM_PATH), turtle.p_l_sys.gameObject.transform) as GameObject;
         ModuleObject.name = "LineSystemModule";
-        return ModuleObject;
+
+        this.UpdateModule(turtle);
     }
 
-    public override void ObjectInitialize(GameObject parent)
+    public override void UpdateModule(Parametric_Turtle turtle)
     {
-        ModuleObject.transform.parent = parent.transform;
         float width = GrowthFunction(LineWidth);
         float length = GrowthFunction(LineLength);
         ModuleObject.transform.localScale = new Vector3(width, length, width);
 
+        Vector3 heading = length * turtle.transform.up;
+
+        /*if (jointed)
+        {
+            Joint thisJoint = jointStack.Peek();    //Assume every branch is jointed
+            if (thisJoint is CharacterJoint)
+            {
+                CharacterJoint cj = thisJoint as CharacterJoint;
+                cj.swingAxis = Vector3.Cross(p_l_sys.transform.up, heading.normalized);
+            }
+            else
+            {
+                thisJoint.axis = Vector3.Cross(p_l_sys.transform.up, heading.normalized);
+            }
+            parent = thisJoint.gameObject;
+            line.ObjectInitialize(parent);
+            line.ModuleObject.transform.localPosition = Vector3.zero;
+        }
+        else*/
+        {
+            ModuleObject.transform.localPosition = turtle.transform.localPosition;
+            ModuleObject.transform.up = turtle.transform.up;
+        }
+
+        turtle.objList.Add(ModuleObject);
+
+        turtle.transform.localPosition += heading;
     }
 }

@@ -50,7 +50,7 @@ public class JointModule : ObjectModule
         return om;
 	}
 
-	public override GameObject ObjectInstantiate()
+	/*public override GameObject ObjectInstantiate()
 	{
 		ModuleObject = GameObject.Instantiate(Resources.Load(ObjectPath)) as GameObject;
 		NodeJoint = ModuleObject.GetComponent<Joint>();
@@ -58,22 +58,16 @@ public class JointModule : ObjectModule
 		return ModuleObject;
 	}
 
-	public override void ObjectInitialize(GameObject parent)
+	public override void InitializeModule(Parametric_Turtle turtle)
 	{
 		NodeJoint = ModuleObject.GetComponent<Joint>();
-		NodeJoint.connectedBody = parent.GetComponent<Rigidbody>();
-		NodeJoint.connectedAnchor = ModuleObject.transform.localPosition - parent.transform.localPosition;
+		//NodeJoint.connectedBody = parent.GetComponent<Rigidbody>();
+		//NodeJoint.connectedAnchor = ModuleObject.transform.localPosition - parent.transform.localPosition;
 
 		NodeBody.mass = GrowthFunction(mass);
 		NodeBody.drag = GrowthFunction(drag);
 		NodeBody.angularDrag = GrowthFunction(angularDrag);
 		NodeBody.useGravity = gravity;
-		/*Debug.Log("ModuleWorld: " + ModuleObject.transform.position);
-		Debug.Log("ModuleLocal: " + ModuleObject.transform.localPosition);
-		Debug.Log("ParentWorld: " + parent.transform.position);
-		Debug.Log("ParentLocal: " + parent.transform.localPosition);
-		Debug.Log("Joint Distance: " + NodeJoint.connectedAnchor); 
-		Debug.DrawRay(parent.transform.position, NodeJoint.connectedAnchor, Color.black, 100f);*/
 
 		if(NodeJoint is SpringJoint)
 		{
@@ -133,5 +127,5 @@ public class JointModule : ObjectModule
 				hj.axis = rotateAxis;
 			}
 		}
-	}
+	}*/
 }

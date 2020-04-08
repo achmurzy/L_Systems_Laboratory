@@ -1,8 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-//Children of the ObjectModule should still share a symbol -- successive inheritances are to achieve polymorphic
-//instantiations that simplify the operation of the turtle
 [System.Serializable]
 public class ObjectModule : SystemModule 
 {
@@ -29,27 +27,35 @@ public class ObjectModule : SystemModule
 		om.scale = scale;
 		om.trigger = trigger;
 		om.jointed = jointed;
+        
         return om;
 	}
 
-	public virtual GameObject ObjectInstantiate()
+	public override void InstantiateModule(Parametric_Turtle turtle)
 	{
-		ModuleObject = GameObject.Instantiate(Resources.Load(ObjectPath)) as GameObject;
-		return ModuleObject;
+		ModuleObject = GameObject.Instantiate(Resources.Load(ObjectPath), turtle.transform.parent) as GameObject;
+        if(ModuleObject.GetComponent<ModuleBehaviour>() != null)
+        {
+            ModuleObject.GetComponent<ModuleBehaviour>().Module = this;
+        }
+        this.UpdateModule(turtle);
 	}
 
-	public virtual void ObjectInitialize (GameObject parent)
+	public override void UpdateModule (Parametric_Turtle turtle)
 	{
-        ModuleObject.transform.rotation = Quaternion.Euler(rotation) * ModuleObject.transform.rotation;
-		if(jointed)
+        ModuleObject.transform.localPosition = turtle.transform.localPosition;
+        ModuleObject.transform.localRotation = turtle.transform.localRotation;
+        ModuleObject.transform.localScale = Vector3.one * GrowthFunction(scale.magnitude);
+        
+        /*if(jointed)
 		{
             ModuleObject.transform.parent = parent.transform;
             ModuleObject.transform.localPosition = Vector3.zero;
 			Joint thisJoint = parent.GetComponent<Joint>();
 			thisJoint.axis = ModuleObject.transform.right.normalized;
 			thisJoint.enableCollision = !trigger;
-		}
-		ModuleObject.transform.localScale = Vector3.one * GrowthFunction(scale.magnitude);
-		ModuleObject.GetComponentInChildren<Collider>().isTrigger = trigger;
+		}*/
+        //ModuleObject.transform.localScale = Vector3.one * GrowthFunction(scale.magnitude);
+		//ModuleObject.GetComponentInChildren<Collider>().isTrigger = trigger;
 	}
 }

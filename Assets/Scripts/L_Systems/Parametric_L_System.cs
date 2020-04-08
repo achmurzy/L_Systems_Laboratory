@@ -5,25 +5,28 @@ using System.Collections.Generic;
 public class Parametric_L_System : MonoBehaviour 
 {
 	public const float MAX_MATURITY = 10f;
-
 	public List<SystemModule> returnList { get; private set; }
+    public SystemModule Axiom;
 	public Dictionary <char, List<SystemModule>> Productions { get; set; }
 	public int ProductionCount { get { return Productions.Count; } }
-
-	private ModuleHolder storedModules;
-	public bool DeriveModules = false;
 
 	public float Age { get; set; }
 	public float Maturity = MAX_MATURITY;
 
-	public GameObject BaseNode { get { return transform.GetChild (1).gameObject; } }
+    public GameObject BaseNode { get { return transform.GetChild (1).gameObject; } }
 	public bool inGrowth = false;
+    public Parametric_Turtle Turtle;
 
-	void Awake()
+    private ModuleHolder storedModules;
+    public bool DeriveModules = false;
+
+    void Awake()
 	{
+        Turtle = GetComponentInChildren<Parametric_Turtle>();
+
 		//We need to be able to preserve the returnList between storages as a pre-fab
 		returnList = new List<SystemModule> ();
-		returnList.Add(new SystemModule('1', 0, 0f, GrowthList.NON_DEVELOPMENTAL));
+
 		Productions = new Dictionary<char, List<SystemModule>> ();
 		Maturity = Mathf.Clamp(Maturity, 0f, MAX_MATURITY);
 	}
@@ -31,10 +34,13 @@ public class Parametric_L_System : MonoBehaviour
 	// Use this for initialization
 	public void Start () 
 	{
-		if(DeriveModules)
+        returnList.Add(new BranchModule('[', 0, 1, GrowthList.NON_DEVELOPMENTAL, true));
+        returnList.Add(Axiom);
+        returnList.Add(new BranchModule(']', 0, 1, GrowthList.NON_DEVELOPMENTAL, false));
+        if (DeriveModules)
 		{
 			ImportDerivation();
-			this.GetComponentInChildren<Parametric_Turtle>().TurtleAnalysis(returnList, 0f);	
+			Turtle.TurtleAnalysis(0f);	
 			TogglePhysics();
 			Age = MAX_MATURITY;
 		}
@@ -53,28 +59,53 @@ public class Parametric_L_System : MonoBehaviour
             if(!inGrowth)
             {
             	inGrowth = true;
-				//TogglePhysics();
-				TogglePhysics();
 			}
 			else if (Age < Maturity)
 			{
-				this.GetComponentInChildren<Parametric_Turtle>().TurtleAnalysis(returnList, Time.deltaTime);
+				Turtle.TurtleAnalysis(Time.deltaTime);
             	Age += (Time.deltaTime);
 			}
         }
 		else if(Age > 0f &&  Input.GetKey(KeyCode.LeftControl))
         {
-			this.GetComponentInChildren<Parametric_Turtle>().TurtleAnalysis(returnList, -Time.deltaTime);
+			Turtle.TurtleAnalysis(-Time.deltaTime);
             Age -= Time.deltaTime;
         }
 		else if(inGrowth)
-        {	
-			TogglePhysics();
+        {
 			inGrowth = false;
         }
 	}
 
-	public void GrowthControl()
+    //Returns the underived apical meristem on the leader axis
+    public ApexModule GetLeaderApex()
+    {
+        foreach (SystemModule sm in returnList)
+        {
+            if (sm is ApexModule)
+            {
+                ApexModule am = sm as ApexModule;
+                if (!am.mature && am.MainAxis)
+                {
+                    return am;
+                }
+            }
+        }
+        return null;
+    }
+
+    //Returns nearest main axis apex
+    public ApexModule GetProximalMainAxisApex(ApexModule am)
+    {
+        ApexModule apex_candidate = am;
+        while (!apex_candidate.MainAxis)
+        {
+            apex_candidate = GetProximalMainAxisApex(am.Parent);
+        }
+        return apex_candidate;
+    }
+
+    public void GrowthControl()
 	{
 		if (!inGrowth)
 		{
@@ -96,7 +127,7 @@ public class Parametric_L_System : MonoBehaviour
 			yield return new WaitForFixedUpdate();
 			if (Age < Maturity)
 			{
-				this.GetComponentInChildren<Parametric_Turtle>().TurtleAnalysis(returnList, Time.deltaTime);
+				Turtle.TurtleAnalysis(Time.deltaTime);
 				Age += Time.deltaTime;
 			}
 			else
@@ -232,7 +263,7 @@ public class Parametric_L_System : MonoBehaviour
 		{
 			storedModules.LoadProductions(this);
 			storedModules.LoadModules(this);	//Dont age the system, just build all the modulez
-			this.GetComponentInChildren<Parametric_Turtle>().TurtleAnalysis(returnList, 0f);	
+			Turtle.TurtleAnalysis(0f);	
 			Maturity = MAX_MATURITY;
 		}
 		else
@@ -259,4 +290,12 @@ public class Parametric_L_System : MonoBehaviour
 		Debug.Log(axiom + output);
 		return axiom + output;
 	}
+
+    public string PrintDerivation()
+    {
+        string axiom = "";
+        foreach (SystemModule m in returnList)
+            axiom += m.Symbol + " ";
+        return axiom;
+    }
 }
